@@ -251,15 +251,19 @@ export function SubmitForm() {
             </p>
           )}
 
-          <Button
-            type="button"
-            onClick={runExtraction}
-            disabled={!canExtract || extracting}
-            className="mt-3"
-          >
-            <Sparkles size={15} />
-            {extracting ? 'Analyse en cours…' : 'Remplir le formulaire'}
-          </Button>
+          <div className="mt-3 flex items-center gap-3">
+            <Button
+              type="button"
+              onClick={runExtraction}
+              disabled={!canExtract || extracting}
+            >
+              <Sparkles size={15} />
+              {extracting ? 'Analyse en cours…' : 'Remplir le formulaire'}
+            </Button>
+            {extracting && (
+              <span className="text-[12px] text-muted">Peut prendre jusqu'à ~1 min…</span>
+            )}
+          </div>
         </div>
       </div>
 

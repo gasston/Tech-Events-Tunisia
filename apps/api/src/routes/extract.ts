@@ -12,29 +12,12 @@ const IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'] as co
 
 function systemPrompt() {
   const today = new Date().toISOString().slice(0, 10)
-  return `Tu extrais les informations d'un événement tech en Tunisie à partir d'une affiche et/ou d'un texte.
-Date du jour : ${today}. Fuseau horaire : Tunisie (UTC+01:00).
-
-Réponds UNIQUEMENT avec un objet JSON valide (aucun texte autour), avec exactement ces clés :
-{
-  "title": string,
-  "organizer": string,
-  "description": string,              // résumé clair en français, 2 à 5 phrases
-  "startDate": string|null,           // ISO 8601 +01:00, ex "2026-11-20T18:30:00+01:00"
-  "endDate": string|null,
-  "format": "onsite"|"online"|"hybrid",
-  "city": string|null,                // une ville parmi: ${CITIES.join(', ')}
-  "address": string|null,
-  "categories": string[],             // parmi: ${CATEGORIES.join(', ')}
-  "targetAudience": string[],         // parmi: ${AUDIENCES.join(', ')}
-  "isFree": boolean,
-  "price": number|null,               // en TND si payant
-  "registrationUrl": string|null,
-  "websiteUrl": string|null,
-  "onlineUrl": string|null
-}
-
-Règles : si l'année d'une date manque, déduis l'occurrence à venir la plus proche. Mets null pour tout champ réellement absent. N'invente jamais d'URL, de lieu ni de date.`
+  // Prompt court = eval CPU plus rapide. Les valeurs d'enum (catégories/villes/
+  // public) sont nettoyées côté serveur par clampArray, pas besoin de les lister.
+  return `Extrais l'événement tech (texte/affiche) en JSON strict (aucun texte autour). Aujourd'hui: ${today}, fuseau +01:00.
+Clés: title, organizer, description (résumé FR 2-4 phrases), startDate, endDate (ISO 8601 +01:00 ou null), format ("onsite"|"online"|"hybrid"), city, address, categories (array), targetAudience (array), isFree (bool), price (number TND ou null), registrationUrl, websiteUrl, onlineUrl.
+Catégories possibles: ${CATEGORIES.join(', ')}.
+Règles: année manquante → occurrence à venir la plus proche; null si absent; n'invente jamais URL/lieu/date.`
 }
 
 function clampArray(values: unknown, allowed: readonly string[]): string[] {
@@ -146,7 +129,7 @@ export async function extractRoutes(app: FastifyInstance) {
           ],
           temperature: 0,
           response_format: { type: 'json_object' },
-          max_tokens: 1500,
+          max_tokens: 800,
         }),
         signal: AbortSignal.timeout(120_000), // CPU inference can be slow; fail cleanly, don't hang
       })
