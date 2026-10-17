@@ -1,7 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
-import * as jose from 'jose'
+import { decodeJwt } from 'jose'
 
-export async function middleware(request: NextRequest) {
+// UX gate only — presence + expiry check, no signature verification.
+// Real authorization is enforced by the API (jwtVerify with the runtime secret)
+// on every /api/admin/* call. We deliberately avoid verifying the signature here
+// because Next inlines process.env at build time, which would use the build-time
+// JWT_SECRET (not the runtime one) and reject valid tokens.
+export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl
 
   if (pathname.startsWith('/admin') && !pathname.startsWith('/admin/login')) {
@@ -10,8 +15,8 @@ export async function middleware(request: NextRequest) {
       return NextResponse.redirect(new URL('/admin/login', request.url))
     }
     try {
-      const secret = new TextEncoder().encode(process.env.JWT_SECRET || 'changeme')
-      await jose.jwtVerify(token, secret)
+      const { exp } = decodeJwt(token)
+      if (exp && Date.now() >= exp * 1000) throw new Error('expired')
       return NextResponse.next()
     } catch {
       return NextResponse.redirect(new URL('/admin/login', request.url))
