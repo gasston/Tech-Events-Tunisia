@@ -1,0 +1,101 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-tet_db}
+      POSTGRES_USER: ${POSTGRES_USER:-tet}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-tet_secret}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-tet} -d ${POSTGRES_DB:-tet_db}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  api:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    restart: unless-stopped
+    ports:
+      - "3001:3001"
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: postgresql://${POSTGRES_USER:-tet}:${POSTGRES_PASSWORD:-tet_secret}@postgres:5432/${POSTGRES_DB:-tet_db}
+      PORT: 3001
+      JWT_SECRET: ${JWT_SECRET}
+      SESSION_SECRET: ${SESSION_SECRET}
+      ADMIN_EMAIL: ${ADMIN_EMAIL}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD}
+      UPLOADS_DIR: /uploads
+      APP_URL: ${APP_URL:-http://localhost:3000}
+      LLM_BASE_URL: ${LLM_BASE_URL:-http://ollama:11434/v1}
+      LLM_MODEL: ${LLM_MODEL:-qwen2.5:3b}
+      LLM_API_KEY: ${LLM_API_KEY:-}
+    volumes:
+      - uploads_data:/uploads
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:3001/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  web:
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      NODE_ENV: production
+      API_URL: http://api:3001
+      NEXT_PUBLIC_APP_URL: ${APP_URL:-http://localhost:3000}
+      JWT_SECRET: ${JWT_SECRET}
+    depends_on:
+      api:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:3000 || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Modèle local (extraction IA). CPU-only sur ce VPS — garder un petit modèle quantifié.
+  ollama:
+    image: ollama/ollama:latest
+    restart: unless-stopped
+    environment:
+      OLLAMA_KEEP_ALIVE: "5m"          # décharge le modèle après 5 min d'inactivité (libère la RAM)
+      OLLAMA_MAX_LOADED_MODELS: "1"
+    volumes:
+      - ollama_models:/root/.ollama
+    mem_limit: 4g                       # protège postgres/api/web (pas de swap sur ce VPS)
+    healthcheck:
+      test: ["CMD", "ollama", "list"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # One-shot : pré-télécharge le modèle au 1er démarrage, puis s'arrête.
+  # Idempotent (ollama pull ne re-télécharge pas si le modèle est déjà là).
+  # NB: si tu passes à DeepSeek/cloud, arrête les services ollama + ollama-init.
+  ollama-init:
+    image: ollama/ollama:latest
+    depends_on:
+      ollama:
+        condition: service_healthy
+    environment:
+      OLLAMA_HOST: http://ollama:11434
+    entrypoint: ["/bin/sh", "-c", "ollama pull ${LLM_MODEL:-qwen2.5:3b} && echo '✓ Modèle prêt: ${LLM_MODEL:-qwen2.5:3b}'"]
+    restart: "no"
+
+volumes:
+  postgres_data:
+  uploads_data:
+  ollama_models:

@@ -1,0 +1,88 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ─── Design tokens ─────────────────────────────────────────────────────── */
+/* Dark-first (festival energy), light available via next-themes toggle.      */
+
+:root,
+.light {
+  --bg: #ffffff;
+  --surface: #ffffff;
+  --surface-2: #f6f6f8;
+  --line: #e8e8ec;
+  --fg: #16161a;
+  --muted: #6b6b76;
+  --accent: #6d4aff;
+  --accent-hover: #5a38f0;
+  --accent-fg: #ffffff;
+  --hot: #ff2e74;
+}
+
+.dark {
+  --bg: #0b0b0f;
+  --surface: #15151c;
+  --surface-2: #1e1e27;
+  --line: #27272f;
+  --fg: #f4f4f6;
+  --muted: #9a9aa5;
+  --accent: #7c5cff;
+  --accent-hover: #6b4af0;
+  --accent-fg: #ffffff;
+  --hot: #ff4d8d;
+}
+
+* {
+  box-sizing: border-box;
+  border-color: var(--line);
+}
+
+html {
+  color-scheme: dark;
+}
+html.light {
+  color-scheme: light;
+}
+
+body {
+  background: var(--bg);
+  color: var(--fg);
+  font-family: var(--font-inter), system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--line);
+  border-radius: 4px;
+}
+
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+::selection {
+  background: var(--accent);
+  color: var(--accent-fg);
+}
+
+/* Display headings: tight, bold, slightly condensed feel */
+.font-display {
+  letter-spacing: -0.03em;
+}
+
+/* Leaflet dark adjust */
+.dark .leaflet-tile {
+  filter: brightness(0.7) invert(1) contrast(0.9) hue-rotate(180deg) saturate(0.7);
+}
+.leaflet-container {
+  background: var(--surface-2) !important;
+}
