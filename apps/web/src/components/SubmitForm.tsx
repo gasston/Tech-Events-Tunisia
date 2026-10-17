@@ -1,5 +1,5 @@
 'use client'
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { Upload, CheckCircle, AlertCircle, Sparkles, FileText, ImageUp } from 'lucide-react'
 import { CATEGORIES, CITIES, AUDIENCES } from '@tet/shared'
@@ -64,6 +64,8 @@ export function SubmitForm() {
   const [extracting, setExtracting] = useState(false)
   const [extractError, setExtractError] = useState('')
   const [extractDone, setExtractDone] = useState(false)
+  const posterInputRef = useRef<HTMLInputElement>(null)
+  const pickPoster = () => posterInputRef.current?.click()
 
   function splitIso(iso: string | null): { date: string; time: string } {
     if (!iso) return { date: '', time: '' }
@@ -192,10 +194,19 @@ export function SubmitForm() {
         </div>
 
         <div className="p-4">
+          {/* Input fichier toujours monté (ref stable) */}
+          <input
+            ref={posterInputRef}
+            type="file"
+            accept="image/*"
+            className="hidden"
+            onChange={(e) => { setPosterFile(e.target.files?.[0] ?? null); setExtractDone(false) }}
+          />
+
           <div className="mb-3 flex gap-2">
             <button
               type="button"
-              onClick={() => setMode('image')}
+              onClick={() => { setMode('image'); pickPoster() }}
               className={cn('flex items-center gap-1.5 rounded-md border px-3 py-1.5 text-[13px] transition-colors',
                 mode === 'image' ? 'border-accent bg-accent text-accent-fg' : 'border-line bg-surface text-fg hover:border-accent/50')}
             >
@@ -212,16 +223,14 @@ export function SubmitForm() {
           </div>
 
           {mode === 'image' ? (
-            <label className="flex cursor-pointer items-center gap-2 rounded-md border border-dashed border-line bg-surface px-3 py-2.5 text-[13px] text-muted transition-colors hover:border-accent/50">
-              <Upload size={14} />
-              {posterFile ? posterFile.name : 'Choisir une affiche (JPG, PNG, WebP)'}
-              <input
-                type="file"
-                accept="image/*"
-                className="hidden"
-                onChange={(e) => { setPosterFile(e.target.files?.[0] ?? null); setExtractDone(false) }}
-              />
-            </label>
+            <button
+              type="button"
+              onClick={pickPoster}
+              className="flex w-full items-center gap-2 rounded-md border border-dashed border-line bg-surface px-3 py-4 text-left text-[13px] text-muted transition-colors hover:border-accent/50 hover:bg-surface-2"
+            >
+              <Upload size={16} className="shrink-0 text-accent" />
+              {posterFile ? posterFile.name : 'Cliquer pour choisir une affiche (JPG, PNG, WebP)'}
+            </button>
           ) : (
             <textarea
               value={pastedText}
