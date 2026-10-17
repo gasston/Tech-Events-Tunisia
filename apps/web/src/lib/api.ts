@@ -191,7 +191,11 @@ export async function extractEvent(opts: { file?: File; text?: string }): Promis
     const err = await res.json().catch(() => ({ error: res.statusText }))
     throw new Error(err.error || `HTTP ${res.status}`)
   }
-  return res.json()
+  // The endpoint streams a heartbeat then the JSON; errors come back as
+  // 200 + { error }. Parse the text (leading whitespace is valid JSON).
+  const data = JSON.parse(await res.text())
+  if (data && data.error) throw new Error(data.error)
+  return data
 }
 
 export async function uploadImage(file: File): Promise<{ url: string }> {

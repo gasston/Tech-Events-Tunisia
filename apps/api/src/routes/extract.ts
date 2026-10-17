@@ -114,6 +114,20 @@ export async function extractRoutes(app: FastifyInstance) {
         ]
       : (text as string)
 
+    // Slow CPU inference (~50s) would idle-kill the proxied socket (Next → api
+    // "socket hang up"). Take over the raw response and emit a whitespace
+    // heartbeat every 10s to keep it alive; leading whitespace is ignored by
+    // JSON.parse. Post-hijack errors are returned as 200 + { error } (the
+    // frontend checks for that field). ponytail: heartbeat trick, no extra infra.
+    reply.hijack()
+    const out = reply.raw
+    out.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' })
+    const heartbeat = setInterval(() => { try { out.write(' ') } catch {} }, 10_000)
+    const finish = (payload: unknown) => {
+      clearInterval(heartbeat)
+      try { out.end(JSON.stringify(payload)) } catch {}
+    }
+
     try {
       const res = await fetch(`${baseUrl.replace(/\/$/, '')}/chat/completions`, {
         method: 'POST',
@@ -131,13 +145,13 @@ export async function extractRoutes(app: FastifyInstance) {
           response_format: { type: 'json_object' },
           max_tokens: 800,
         }),
-        signal: AbortSignal.timeout(120_000), // CPU inference can be slow; fail cleanly, don't hang
+        signal: AbortSignal.timeout(170_000), // CPU inference can be slow; fail cleanly, don't hang
       })
 
       if (!res.ok) {
         const detail = await res.text().catch(() => '')
         req.log.error({ status: res.status, detail }, 'LLM error')
-        return reply.status(502).send({ error: `Erreur IA (${res.status})` })
+        return finish({ error: `Erreur IA (${res.status})` })
       }
 
       const data: any = await res.json()
@@ -145,19 +159,19 @@ export async function extractRoutes(app: FastifyInstance) {
 
       // Models sometimes wrap JSON in prose or ```json fences — extract the object.
       const match = content.match(/\{[\s\S]*\}/)
-      if (!match) return reply.status(422).send({ error: "Réponse IA illisible" })
+      if (!match) return finish({ error: 'Réponse IA illisible' })
 
       let raw: unknown
       try {
         raw = JSON.parse(match[0])
       } catch {
-        return reply.status(422).send({ error: "JSON IA invalide" })
+        return finish({ error: 'JSON IA invalide' })
       }
 
-      return reply.send(normalize(raw))
+      finish(normalize(raw))
     } catch (err: any) {
       req.log.error(err)
-      return reply.status(500).send({ error: 'Erreur extraction' })
+      finish({ error: 'Erreur extraction' })
     }
   })
 }
