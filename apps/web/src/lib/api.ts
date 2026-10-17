@@ -83,6 +83,31 @@ export async function getNewsletterCount(cookie?: string): Promise<{ count: numb
   })
 }
 
+export interface Subscriber {
+  id: string
+  email: string
+  createdAt: string
+}
+
+export async function getNewsletterSubscribers(cookie?: string): Promise<Subscriber[]> {
+  return apiFetch('/api/admin/newsletter', {
+    headers: cookie ? { Cookie: cookie } : {},
+    credentials: 'include',
+  })
+}
+
+export async function addNewsletterSubscriber(email: string): Promise<Subscriber> {
+  return apiFetch('/api/admin/newsletter', {
+    method: 'POST',
+    body: JSON.stringify({ email }),
+    credentials: 'include',
+  })
+}
+
+export async function deleteNewsletterSubscriber(id: string) {
+  return apiFetch(`/api/admin/newsletter/${id}`, { method: 'DELETE', credentials: 'include' })
+}
+
 // Admin
 export async function adminLogin(email: string, password: string) {
   return apiFetch('/api/auth/login', {

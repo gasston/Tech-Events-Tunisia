@@ -62,11 +62,14 @@ export default async function AdminPage() {
         <StatCard label="Publiés" value={stats.published} tone="text-emerald-500" />
         <StatCard label="Rejetés" value={stats.rejected} tone="text-red-500" />
       </div>
-      <div className="mb-7 flex items-center gap-2 rounded-lg border border-line bg-surface px-4 py-3">
+      <Link
+        href="/admin/newsletter"
+        className="mb-7 flex items-center gap-2 rounded-lg border border-line bg-surface px-4 py-3 transition-colors hover:border-accent/40 hover:bg-surface-2"
+      >
         <Mail size={16} className="text-accent" />
-        <span className="text-[13px] text-muted">Abonnés newsletter</span>
+        <span className="text-[13px] text-muted">Abonnés newsletter — gérer / exporter</span>
         <span className="ml-auto font-display text-lg font-bold">{newsletter.count}</span>
-      </div>
+      </Link>
 
       <div className="rounded-lg border border-line bg-surface p-6">
         <AdminEventList initialEvents={events} />
